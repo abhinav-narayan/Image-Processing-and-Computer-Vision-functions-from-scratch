@@ -1,65 +1,68 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 20 10:15:38 2025
+Created on Fri May 30 13:19:55 2025
 
 @author: Abhi
 """
 
+import numpy as np
 
 
-def histogram_equalization(image):
-    """
-    Performs histogram equalization on a 2D grayscale image of any size and intensity range.
+def hist_eq_no_cv2(img_gray):
 
-    Args:
-        image: A 2D list representing a grayscale image.
+    m,n = img_gray.shape
 
-    Returns:
-        A 2D list representing the equalized grayscale image (values scaled to 0–255).
-    """
-    height = len(image)
-    width = len(image[0])
-    total_pixels = height * width
+    #Final output image - A zero padded image which will be remapped as shown in line 71
+    hist_op = np.zeros((m,n),dtype = 'uint8')
+    L = 2**(m)
+    #To find frequency of pixel occurrances include an array of zeros
+    cnts = np.zeros([L],dtype = 'int32')
+    # print(cnts.shape)
 
-    # Step 1: Find min and max intensity in the image
-    min_val = min(min(row) for row in image)
-    max_val = max(max(row) for row in image)
-    intensity_range = max_val - min_val + 1
+    #Using arange syntax as opposed to linspace, will give you whole number 
+    bins = np.arange(0,L)
+    # print(bins) - Shows bins numbered from 0-255 with whole numbers
 
-    # Step 2: Compute histogram
-    histogram = [0] * intensity_range
-    for row in image:
-        for pixel in row:
-            histogram[pixel - min_val] += 1
+    for i in range(m):
+        for j in range(n):
+            # Counting the frequency of pixel intensities is done by finding the given intensity value and adding it by 1 until
 
-    # Step 3: Compute CDF
-    cdf = [0] * intensity_range
-    cdf[0] = histogram[0]
-    for i in range(1, intensity_range):
-        cdf[i] = cdf[i - 1] + histogram[i]
+            cnts[img_gray[i,j]] = cnts[img_gray[i,j]] + 1
 
-    cdf_min = next(c for c in cdf if c > 0)
+    # print(cnts)
 
-    # Step 4: Equalization mapping (output scaled to 0–255)
-    equalization_map = [0] * intensity_range
-    for i in range(intensity_range):
-        equalization_map[i] = round((cdf[i] - cdf_min) / (total_pixels - cdf_min) * 255)
+    #Computing Probability Distribution function
+    no_of_pixels = m*n
 
-    # Step 5: Apply mapping to image
-    equalized_image = [
-        [equalization_map[pixel - min_val] for pixel in row]
-        for row in image
-    ]
+    #Probability Distribution Function (PDF)
+    p = np.zeros([L],dtype = 'float32')
+    
+    # Finding probability 
+    for i in range(len(p)):
+        p[i] = cnts[i]/no_of_pixels
 
-    return equalized_image
+    # print(np.sum(p))
 
-image = [
-    [0, 2, 3, 2],
-    [4, 5, 6, 7],
-    [6, 4, 2, 3],
-    [8, 9, 10, 16]
-]
+    cdf = np.zeros([L],dtype = 'float32')
 
-equalized = histogram_equalization(image)
-for row in equalized:
-    print(row)
+    # Mapping first value of Probability Distribution Function to Cumulative Distribution Function variable so that addition does not lead 
+    # a sum of 2 as the maximum value. 1 is the maximum value of probability that can be obtained. 
+    cdf[0] = p[0]
+
+    # Function evaluates from 1-255 because we have defined cdf[0] <- p[0]
+    for l in range(1,256):
+        cdf[l] = cdf[l-1] + p[l]
+    # print(cdf)
+
+    #rounding off numbers - 0 is for whole number, whereas 1 means number rounded off with one decimal point
+    #L - Number of Discrete intensity levels
+    # L = 256
+    sk = np.round(cdf * (L-1),0) #  Sk = (256 - 1) * cdf
+
+    #Remapping of pixel intensities
+    for M in range(m):
+        for N in range(n):
+            r = img_gray[M,N] # r - pixel intensity
+            s = sk[r]  # s - cdf obtained at particular intensity value r as per input image
+            hist_op[M,N] = s # Final output image remapped as per s
+    return hist_op    
