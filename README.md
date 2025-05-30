@@ -7,4 +7,4 @@ Activation functions - Rectified Linear Unit (ReLU), Softmax
 Image segmentation - Binary thresholding
 Image interpolation or decimation - Nearest Neighbors, Bilinear
 Maxpooling 2D
-
+Histogram Equalization
